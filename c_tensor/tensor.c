@@ -28,6 +28,7 @@ Tensor* create_tensor(int ndim, const int* shape) {
 }
 
 Tensor* tensor_add(const Tensor* a, const Tensor* b) {
+    if (!a || !b) return NULL;
     if(a->ndim != b->ndim) return NULL;
     for(int i = 0; i < a->ndim; i++) {
         if(a->shape[i] != b->shape[i]) return NULL;
@@ -42,6 +43,7 @@ Tensor* tensor_add(const Tensor* a, const Tensor* b) {
 }
 
 Tensor* tensor_matmul(const Tensor* a, const Tensor* b) {
+    if (!a || !b) return NULL;
     if(a->ndim != 2 || b->ndim != 2) return NULL;
     if(a->shape[1] != b->shape[0]) return NULL;
 
