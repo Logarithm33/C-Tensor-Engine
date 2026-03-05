@@ -47,21 +47,21 @@ Tensor* tensor_matmul(const Tensor* a, const Tensor* b) {
     if(a->ndim != 2 || b->ndim != 2) return NULL;
     if(a->shape[1] != b->shape[0]) return NULL;
 
-    int m = a->shape[0];
-    int n = a->shape[1];
-    int p = b->shape[1];
+    int row_a = a->shape[0];
+    int column_a = a->shape[1];
+    int column_b = b->shape[1];
 
-    int result_shape[] = {m, p};
+    int result_shape[] = {row_a, column_b};
     Tensor *result = create_tensor(2, result_shape);
     if(!result) return NULL;
 
-    for(int i = 0; i < m; i++) {
-        for(int j = 0; j < p; j++) {
+    for(int row_result = 0; row_result < row_a; row_result++) {
+        for(int column_result = 0; column_result < column_b; column_result++) {
             float sum = 0.0f;
-            for(int k = 0; k < n; k++) {
-                sum += a->data[i * n + k] * b->data[k * p + j];
+            for(int k = 0; k < column_a; k++) {
+                sum += a->data[row_result * column_a + k] * b->data[k * column_b + column_result];
             }
-            result->data[i * p + j] = sum;
+            result->data[row_result * column_b + column_result] = sum;
         }
     }
     return result;

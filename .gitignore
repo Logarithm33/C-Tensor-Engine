@@ -2,4 +2,5 @@
 
 *.out
 
-main.c
+test_tensor
+
