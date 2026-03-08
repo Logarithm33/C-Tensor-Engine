@@ -31,6 +31,7 @@ Tensor* create_tensor(int ndim, const int* shape) {
     tensor->_prev = NULL;
     tensor->_prev_count = 0;
     tensor->_op[0] = '\0';
+
     tensor->_backward = NULL;
 
     return tensor;
@@ -78,10 +79,6 @@ Tensor* tensor_matmul(const Tensor* a, const Tensor* b) {
 
 void free_tensor(Tensor *t) {
     if(t) {
-        free(t->data);
-        free(t->shape);
-        free(t);
-
         if(t->grad) {
             free(t->grad);
         }
@@ -89,5 +86,9 @@ void free_tensor(Tensor *t) {
         if(t->_prev) {
             free(t->_prev);
         }
+        
+        free(t->data);
+        free(t->shape);
+        free(t);
     }
 }

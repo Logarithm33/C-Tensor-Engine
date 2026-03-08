@@ -22,7 +22,7 @@ struct Tensor{
     char _op[16];
 
     void (*_backward)(Tensor *self);
-}
+};
 
 Tensor* create_tensor(int ndim, const int* shape);
 
