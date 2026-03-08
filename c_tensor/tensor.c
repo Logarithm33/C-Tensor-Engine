@@ -14,7 +14,7 @@ Tensor* create_tensor(int ndim, const int* shape) {
         return NULL;
     }
 
-    tensor->shape = (int *)malloc(sizeof(int)*ndim);
+    tensor->shape = (int *)malloc(sizeof(int) * ndim);
     if(!tensor->shape) {
         free(tensor->data);
         free(tensor);
@@ -24,6 +24,15 @@ Tensor* create_tensor(int ndim, const int* shape) {
 
     tensor->ndim = ndim;
     tensor->size = total_count;
+
+    tensor->grad = NULL;
+    tensor->requires_grad = false;
+
+    tensor->_prev = NULL;
+    tensor->_prev_count = 0;
+    tensor->_op[0] = '\0';
+    tensor->_backward = NULL;
+
     return tensor;
 }
 
@@ -72,5 +81,13 @@ void free_tensor(Tensor *t) {
         free(t->data);
         free(t->shape);
         free(t);
+
+        if(t->grad) {
+            free(t->grad);
+        }
+
+        if(t->_prev) {
+            free(t->_prev);
+        }
     }
 }

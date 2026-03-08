@@ -4,13 +4,25 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 
-typedef struct {
+typedef struct Tensor Tensor;
+
+struct Tensor{
     float *data;   
     int *shape;    
     int ndim;      
     size_t size;
-} Tensor;
+
+    float *grad;
+    bool requires_grad;
+
+    Tensor **_prev;
+    int _prev_count;
+    char _op[16];
+
+    void (*_backward)(Tensor *self);
+}
 
 Tensor* create_tensor(int ndim, const int* shape);
 
