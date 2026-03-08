@@ -61,6 +61,46 @@ void add_backward (Tensor *self) {
     }
 }
 
+void matmul_backward (Tensor *self) {
+    if (!self || !self->grad) return;
+
+    Tensor *a = self->_prev[0];
+    Tensor *b = self->_prev[1];
+
+    int row_a = a->shape[0];
+    int column_a = a->shape[1];
+    int column_b = b->shape[1];
+
+    if (a->requires_grad) {
+        if (!a->grad) {
+            a->grad = (float *)calloc(a->size, sizeof(float));
+        }
+        for (int i = 0; i < row_a; i++) {
+            for (int j = 0; j < column_a; j++) {
+                float sum = 0.0f;
+                for (int k = 0; k < column_b; k++) {
+                    sum +=self->grad[i * column_b + k] * b->data[j * column_b + k];
+                }
+                a->grad[i * column_a + j] += sum;
+            }
+        }
+    }
+    if (b->requires_grad) {
+        if (!b->grad) {
+            b->grad = (float *)calloc(b->size, sizeof(float));
+        }
+        for (int i = 0; i < column_a; i++) {
+            for (int j = 0; j < column_b; j++) {
+                float sum = 0.0f;
+                for (int k = 0; k < row_a; k++) {
+                    sum += self->grad[k * column_b + j] * a->data[k * column_a + i];
+                }
+                b->grad[i * column_b + j] += sum;
+            }
+        }
+    }
+}
+
 Tensor* tensor_add(const Tensor* a, const Tensor* b) {
     if (!a || !b) return NULL;
     if(a->ndim != b->ndim) return NULL;
@@ -118,7 +158,7 @@ Tensor* tensor_matmul(const Tensor* a, const Tensor* b) {
         result->_prev[0] = (Tensor *)a;
         result->_prev[1] = (Tensor *)b;
         strncpy(result->_op, "matmul", 16);
-        // result->_backward = matmul_backward; 
+        result->_backward = matmul_backward; 
     }
     return result;
 }
