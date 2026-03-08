@@ -37,9 +37,34 @@ Tensor* create_tensor(int ndim, const int* shape) {
     return tensor;
 }
 
+void add_backward (Tensor *self) {
+    if (!self || !self->grad) return;
+
+    Tensor *a = self->_prev[0];
+    Tensor *b = self->_prev[1];
+
+    if (a->requires_grad) {
+        if (!a->grad) {
+            a->grad = (float *)calloc(a->size, sizeof(float));
+        }
+        for (size_t i = 0; i < a->size; i++) {
+            a->grad[i] += self->grad[i];
+        }
+    }
+    if (b->requires_grad) {
+        if (!b->grad) {
+            b->grad = (float *)calloc(b->size, sizeof(float));
+        }
+        for (size_t i = 0; i < b->size; i++) {
+            b->grad[i] += self->grad[i];
+        }
+    }
+}
+
 Tensor* tensor_add(const Tensor* a, const Tensor* b) {
     if (!a || !b) return NULL;
     if(a->ndim != b->ndim) return NULL;
+
     for(int i = 0; i < a->ndim; i++) {
         if(a->shape[i] != b->shape[i]) return NULL;
     }
@@ -48,6 +73,17 @@ Tensor* tensor_add(const Tensor* a, const Tensor* b) {
 
     for(size_t i = 0; i < a->size; i++) {
         result->data[i] = a->data[i] + b->data[i];
+    }
+
+    result->requires_grad = a->requires_grad || b->requires_grad;
+    if(result->requires_grad) {
+        result->_prev_count = 2;
+        result->_prev = (Tensor **)malloc(sizeof(Tensor *) * 2);
+        result->_prev[0] = (Tensor *)a;
+        result->_prev[1] = (Tensor *)b;
+
+        strncpy(result->_op, "add", 16);
+        result->_backward = add_backward;
     }
     return result;
 }
@@ -74,6 +110,16 @@ Tensor* tensor_matmul(const Tensor* a, const Tensor* b) {
             result->data[row_result * column_b + column_result] = sum;
         }
     }
+
+    result->requires_grad = a->requires_grad || b->requires_grad;
+    if(result->requires_grad) {
+        result->_prev_count = 2;
+        result->_prev = (Tensor **)malloc(sizeof(Tensor *) * 2);
+        result->_prev[0] = (Tensor *)a;
+        result->_prev[1] = (Tensor *)b;
+        strncpy(result->_op, "matmul", 16);
+        // result->_backward = matmul_backward; 
+    }
     return result;
 }
 
@@ -86,7 +132,7 @@ void free_tensor(Tensor *t) {
         if(t->_prev) {
             free(t->_prev);
         }
-        
+
         free(t->data);
         free(t->shape);
         free(t);
