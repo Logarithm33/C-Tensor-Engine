@@ -64,6 +64,21 @@ static void matmul_backward (Tensor *self) {
     }
 }
 
+static void relu_backward (Tensor *self) {
+    if (!self || !self->grad) return;
+
+    Tensor *a = self->_prev[0];
+
+    if (a->requires_grad) {
+        if (!a->grad) {
+            a->grad = (float *)calloc(a->size, sizeof(float));
+        }
+        for (size_t i = 0; i < a->size; i++) {
+            a->grad[i] += (a->data[i] > 0 ? 1.0f : 0.0f) * self->grad[i];
+        }
+    }
+}
+
 Tensor* tensor_add(const Tensor* a, const Tensor* b) {
     if (!a || !b) return NULL;
     if(a->ndim != b->ndim) return NULL;
@@ -122,6 +137,28 @@ Tensor* tensor_matmul(const Tensor* a, const Tensor* b) {
         result->_prev[1] = (Tensor *)b;
         strncpy(result->_op, "matmul", 16);
         result->_backward = matmul_backward; 
+    }
+    return result;
+}
+
+Tensor* tensor_relu(const Tensor* a) {
+    if (!a) return NULL;
+
+    Tensor *result = create_tensor(a->ndim, a->shape);
+    if(!result) return NULL;
+
+    for(size_t i = 0; i < a->size; i++) {
+        result->data[i] = a->data[i] > 0 ? a->data[i] : 0;
+    }
+
+    result->requires_grad = a->requires_grad;
+    if(result->requires_grad) {
+        result->_prev_count = 1;
+        result->_prev = (Tensor **)malloc(sizeof(Tensor *));
+        result->_prev[0] = (Tensor *)a;
+
+        strncpy(result->_op, "relu", 16);
+        result->_backward = relu_backward;
     }
     return result;
 }
