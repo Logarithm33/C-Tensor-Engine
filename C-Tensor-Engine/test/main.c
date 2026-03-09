@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "tensor.h"
+#include "operation.h"
+#include "autograd.h"
 
 int main() {
     printf("=== C-Tensor Engine v0.1: Full DAG Autograd Test ===\n\n");

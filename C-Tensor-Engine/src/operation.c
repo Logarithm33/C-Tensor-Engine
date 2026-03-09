@@ -1,45 +1,6 @@
-#include "tensor.h"
+#include "operation.h"
 
-Tensor* create_tensor(int ndim, const int* shape) {
-    size_t total_count = 1;
-    for(int i = 0; i < ndim; i++) {
-        total_count *= shape[i];
-    }
-    Tensor *tensor = (Tensor *)malloc(sizeof(Tensor));
-    if(!tensor) return NULL;
-
-    tensor->data = (float *)malloc(sizeof(float) * total_count);
-    if(!tensor->data) {
-        free(tensor);
-        return NULL;
-    }
-
-    tensor->shape = (int *)malloc(sizeof(int) * ndim);
-    if(!tensor->shape) {
-        free(tensor->data);
-        free(tensor);
-        return NULL;
-    }
-    memcpy(tensor->shape, shape, ndim * sizeof(int));
-
-    tensor->ndim = ndim;
-    tensor->size = total_count;
-
-    tensor->grad = NULL;
-    tensor->requires_grad = false;
-
-    tensor->_prev = NULL;
-    tensor->_prev_count = 0;
-    tensor->_op[0] = '\0';
-
-    tensor->_backward = NULL;
-
-    tensor->_visited = false;
-
-    return tensor;
-}
-
-void add_backward (Tensor *self) {
+static void add_backward (Tensor *self) {
     if (!self || !self->grad) return;
 
     Tensor *a = self->_prev[0];
@@ -63,7 +24,7 @@ void add_backward (Tensor *self) {
     }
 }
 
-void matmul_backward (Tensor *self) {
+static void matmul_backward (Tensor *self) {
     if (!self || !self->grad) return;
 
     Tensor *a = self->_prev[0];
@@ -101,40 +62,6 @@ void matmul_backward (Tensor *self) {
             }
         }
     }
-}
-
-void build_topo (Tensor *t,Tensor **topo_list, int *topo_size) {
-    if (!t || t->_visited) return;
-
-    t->_visited = true;
-    for (int i = 0; i < t->_prev_count; i++) {
-        build_topo(t->_prev[i], topo_list, topo_size);
-    }
-    topo_list[(*topo_size)++] = t;
-}
-
-void tensor_backward (Tensor *loss) {
-    if (!loss) return;
-
-    Tensor **topo_list = (Tensor **)malloc(sizeof(Tensor *) * 1024);
-    int topo_size = 0;
-
-    build_topo(loss, topo_list, &topo_size);
-
-    if (!loss->grad) {
-        loss->grad = (float *)malloc(sizeof(float) * loss->size);
-    }
-    for (size_t i = 0; i < loss->size; i++) {
-        loss->grad[i] = 1.0f;
-    }
-
-    for (int i = topo_size - 1; i >= 0; i--) {
-        if (topo_list[i]->_backward) {
-            topo_list[i]->_backward(topo_list[i]);
-        }
-    }
-
-    free(topo_list);
 }
 
 Tensor* tensor_add(const Tensor* a, const Tensor* b) {
@@ -197,20 +124,4 @@ Tensor* tensor_matmul(const Tensor* a, const Tensor* b) {
         result->_backward = matmul_backward; 
     }
     return result;
-}
-
-void free_tensor(Tensor *t) {
-    if(t) {
-        if(t->grad) {
-            free(t->grad);
-        }
-
-        if(t->_prev) {
-            free(t->_prev);
-        }
-
-        free(t->data);
-        free(t->shape);
-        free(t);
-    }
 }
