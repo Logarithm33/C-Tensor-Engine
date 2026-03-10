@@ -6,20 +6,36 @@ static void add_backward (Tensor *self) {
     Tensor *a = self->_prev[0];
     Tensor *b = self->_prev[1];
 
+    int a_rows = (a->ndim == 2) ? a->shape[0] : 1;
+    int a_cols = (a->ndim == 2) ? a->shape[1] : a->shape[0];
+    int b_rows = (b->ndim == 2) ? b->shape[0] : 1;
+    int b_cols = (b->ndim == 2) ? b->shape[1] : b->shape[0];
+
+    int result_rows = self->shape[0];
+    int result_cols = self->shape[1];
+
     if (a->requires_grad) {
         if (!a->grad) {
             a->grad = (float *)calloc(a->size, sizeof(float));
         }
-        for (size_t i = 0; i < a->size; i++) {
-            a->grad[i] += self->grad[i];
+        for (int i = 0; i < result_rows; i++) {
+            for (int j = 0; j < result_cols; j++) {
+                int a_row_index = (a_rows == 1) ? 0 : i;
+                int a_col_index = (a_cols == 1) ? 0 : j;
+                a->grad[a_row_index * a_cols + a_col_index] += self->grad[i * result_cols + j];
+            }
         }
     }
     if (b->requires_grad) {
         if (!b->grad) {
             b->grad = (float *)calloc(b->size, sizeof(float));
         }
-        for (size_t i = 0; i < b->size; i++) {
-            b->grad[i] += self->grad[i];
+        for (int i = 0; i < result_rows; i++) {
+            for (int j = 0; j < result_cols; j++) {
+                int b_row_index = (b_rows == 1) ? 0 : i;
+                int b_col_index = (b_cols == 1) ? 0 : j;
+                b->grad[b_row_index * b_cols + b_col_index] += self->grad[i * result_cols + j];
+            }
         }
     }
 }
@@ -81,16 +97,34 @@ static void relu_backward (Tensor *self) {
 
 Tensor* tensor_add(const Tensor* a, const Tensor* b) {
     if (!a || !b) return NULL;
-    if(a->ndim != b->ndim) return NULL;
+    if(a->ndim > 2 || b->ndim > 2) return NULL;
 
-    for(int i = 0; i < a->ndim; i++) {
-        if(a->shape[i] != b->shape[i]) return NULL;
+    int a_rows = (a->ndim == 2) ? a->shape[0] : 1;
+    int a_cols = (a->ndim == 2) ? a->shape[1] : a->shape[0];
+    int b_rows = (b->ndim == 2) ? b->shape[0] : 1;
+    int b_cols = (b->ndim == 2) ? b->shape[1] : b->shape[0];
+
+    int result_rows = (a_rows > b_rows) ? a_rows : b_rows;
+    int result_cols = (a_cols > b_cols) ? a_cols : b_cols;
+
+    if ((a_rows != b_rows && a_rows != 1 && b_rows != 1) || (a_cols != b_cols && a_cols != 1 && b_cols != 1)) {
+        return NULL;
     }
-    Tensor *result = create_tensor(a->ndim, a->shape);
+    int result_shape[] = {result_rows, result_cols};
+    Tensor *result = create_tensor(2, result_shape);
     if(!result) return NULL;
 
-    for(size_t i = 0; i < a->size; i++) {
-        result->data[i] = a->data[i] + b->data[i];
+    for (int i = 0; i < result_rows; i++) {
+        for (int j = 0; j < result_cols; j++) {
+            int a_row_index = (a_rows == 1) ? 0 : i;
+            int a_col_index = (a_cols == 1) ? 0 : j;
+            int b_row_index = (b_rows == 1) ? 0 : i;
+            int b_col_index = (b_cols == 1) ? 0 : j;
+
+            float a_val = a->data[a_row_index * a_cols + a_col_index];
+            float b_val = b->data[b_row_index * b_cols + b_col_index];
+            result->data[i * result_cols + j] = a_val + b_val;
+        }
     }
 
     result->requires_grad = a->requires_grad || b->requires_grad;

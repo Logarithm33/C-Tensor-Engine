@@ -3,104 +3,92 @@
 #include "tensor.h"
 #include "operation.h"
 #include "autograd.h"
-#include "loss.h"
-#include "optim.h"
 
 int main() {
     printf("==================================================\n");
-    printf("  C-Tensor Engine v0.2: Epic MLP Training Test\n");
+    printf("  C-Tensor Engine v0.3: 2D Broadcasting Test\n");
     printf("==================================================\n\n");
 
-    // ==========================================
-    // 1. 准备数据 (Batch Size = 1)
-    // ==========================================
-    int shape_X[] = {1, 2};
-    Tensor *X = create_tensor(2, shape_X);
-    X->data[0] = 2.0f; X->data[1] = -1.0f; // 输入特征
-
-    int shape_Y[] = {1, 1};
-    Tensor *Target = create_tensor(2, shape_Y);
-    Target->data[0] = 10.0f; // 模型需要努力学习逼近的真实目标值
-
-    // ==========================================
-    // 2. 初始化模型参数 (网络架构: 2 -> 3 -> 1)
-    // ==========================================
-    int shape_W1[] = {2, 3};
-    Tensor *W1 = create_tensor(2, shape_W1);
-    W1->requires_grad = true; // 这是模型的脑细胞，需要追踪梯度！
-    // 随意初始化一些较小的浮点数
-    W1->data[0] = 0.1f; W1->data[1] = 0.2f; W1->data[2] = -0.1f;
-    W1->data[3] = -0.2f; W1->data[4] = 0.3f; W1->data[5] = 0.1f;
+    // ==========================================================
+    // 测试 1: 行广播 (Row Broadcasting) [2, 3] + [1, 3]
+    // 模拟场景: 2 个样本 (每个 3 维特征) 加上同一个偏置向量
+    // ==========================================================
+    printf("[*] Test 1: Row Broadcasting [2, 3] + [1, 3]\n");
+    
+    int shape_A1[] = {2, 3};
+    Tensor *A1 = create_tensor(2, shape_A1);
+    A1->requires_grad = true;
+    // A1 = [[1, 2, 3],
+    //       [4, 5, 6]]
+    for (int i = 0; i < 6; i++) A1->data[i] = (float)(i + 1);
 
     int shape_B1[] = {1, 3};
     Tensor *B1 = create_tensor(2, shape_B1);
     B1->requires_grad = true;
-    B1->data[0] = 0.1f; B1->data[1] = 0.1f; B1->data[2] = 0.1f;
+    // B1 = [[10, 20, 30]]
+    B1->data[0] = 10.0f; B1->data[1] = 20.0f; B1->data[2] = 30.0f;
 
-    int shape_W2[] = {3, 1};
-    Tensor *W2 = create_tensor(2, shape_W2);
-    W2->requires_grad = true;
-    W2->data[0] = 0.2f; W2->data[1] = -0.1f; W2->data[2] = 0.3f;
-
-    // ==========================================
-    // 3. 实例化上帝之手 (SGD 优化器)
-    // ==========================================
-    Tensor *params[] = {W1, B1, W2};
-    // 学习率设为 0.01，你可以试着调大调小看看会发生什么
-    SGD *optimizer = create_sgd(params, 3, 0.01f); 
-
-    printf("[*] Model initialized. Starting training loop...\n\n");
-
-    // ==========================================
-    // 4. 终极训练大循环 (Epoch Loop)
-    // ==========================================
-    for (int epoch = 0; epoch <= 100; epoch++) {
-        
-        // --- A. 前向传播 (构建当前 Epoch 的计算图 DAG) ---
-        // 层 1: H1 = X * W1
-        Tensor *H1 = tensor_matmul(X, W1);
-        // 加偏置: H2 = H1 + B1
-        Tensor *H2 = tensor_add(H1, B1);
-        // 激活: A1 = ReLU(H2)
-        Tensor *A1 = tensor_relu(H2);
-        // 层 2 (输出层): Pred = A1 * W2
-        Tensor *Pred = tensor_matmul(A1, W2);
-
-        // --- B. 计算误差 ---
-        Tensor *Loss = tensor_mse_loss(Pred, Target);
-
-        // 每 10 步打印一次学习进度
-        if (epoch % 10 == 0) {
-            printf("  Epoch %3d | Loss: %8.4f | Prediction: %8.4f\n", epoch, Loss->data[0], Pred->data[0]);
-        }
-
-        // --- C. 核心三部曲：清零 -> 反向传播 -> 走一步 ---
-        sgd_zero_grad(optimizer);
-        tensor_backward(Loss);
-        sgd_step(optimizer);
-
-        // --- D. 极度关键的内存回收：销毁本轮计算图 ---
-        // 注意：我们绝不能 free 掉 X, Target, W1, B1, W2，因为下一轮还要用它们。
-        // 我们只销毁这一轮产生的中间“废料节点”，从而释放计算图！
-        free_tensor(H1);
-        free_tensor(H2);
-        free_tensor(A1);
-        free_tensor(Pred);
-        free_tensor(Loss);
+    Tensor *C1 = tensor_add(A1, B1);
+    
+    printf("    -> Forward C1 (A1 + B1) Expected:\n");
+    printf("       [[11.0, 22.0, 33.0],\n");
+    printf("        [14.0, 25.0, 36.0]]\n");
+    printf("    -> Actual Output:\n");
+    for(int i = 0; i < 2; i++) {
+        printf("       [[%.1f, %.1f, %.1f]]\n", C1->data[i*3+0], C1->data[i*3+1], C1->data[i*3+2]);
     }
 
-    printf("\n[*] Training completed!\n");
+    // 引擎点火：默认会将 C1 的梯度全部设为 1.0f，然后反向传播
+    tensor_backward(C1);
 
-    // ==========================================
-    // 5. 清理全局战场
-    // ==========================================
-    free_tensor(X);
-    free_tensor(Target);
-    free_tensor(W1);
-    free_tensor(B1);
-    free_tensor(W2);
-    free_sgd(optimizer);
+    printf("\n    -> Backward B1->grad (Row Reduce Sum) Expected:\n");
+    printf("       [[2.0, 2.0, 2.0]]\n");
+    printf("    -> Actual Output:\n");
+    printf("       [[%.1f, %.1f, %.1f]]\n\n", B1->grad[0], B1->grad[1], B1->grad[2]);
 
-    printf("[+] All global memory freed successfully.\n");
+
+    // ==========================================================
+    // 测试 2: 列广播 (Column Broadcasting) [2, 3] + [2, 1]
+    // 模拟场景: 给每一个样本加上其专属的一个独立标量权重
+    // ==========================================================
+    printf("[*] Test 2: Column Broadcasting [2, 3] + [2, 1]\n");
+    
+    int shape_A2[] = {2, 3};
+    Tensor *A2 = create_tensor(2, shape_A2);
+    A2->requires_grad = true;
+    for (int i = 0; i < 6; i++) A2->data[i] = (float)(i + 1);
+
+    int shape_B2[] = {2, 1};
+    Tensor *B2 = create_tensor(2, shape_B2);
+    B2->requires_grad = true;
+    // B2 = [[100],
+    //       [200]]
+    B2->data[0] = 100.0f; B2->data[1] = 200.0f;
+
+    Tensor *C2 = tensor_add(A2, B2);
+    
+    printf("    -> Forward C2 (A2 + B2) Expected:\n");
+    printf("       [[101.0, 102.0, 103.0],\n");
+    printf("        [204.0, 205.0, 206.0]]\n");
+    printf("    -> Actual Output:\n");
+    for(int i = 0; i < 2; i++) {
+        printf("       [[%.1f, %.1f, %.1f]]\n", C2->data[i*3+0], C2->data[i*3+1], C2->data[i*3+2]);
+    }
+
+    tensor_backward(C2);
+
+    printf("\n    -> Backward B2->grad (Column Reduce Sum) Expected:\n");
+    printf("       [[3.0],\n        [3.0]]\n");
+    printf("    -> Actual Output:\n");
+    printf("       [[%.1f],\n        [%.1f]]\n\n", B2->grad[0], B2->grad[1]);
+
+
+    // ==========================================================
+    // 清理战场
+    // ==========================================================
+    free_tensor(A1); free_tensor(B1); free_tensor(C1);
+    free_tensor(A2); free_tensor(B2); free_tensor(C2);
+
+    printf("[+] All tests completed successfully.\n");
     return 0;
 }
