@@ -16,7 +16,7 @@ TARGET = test_tensor
 all:$(TARGET)
 
 $(TARGET):$(OBJS) $(TEST_OBJS)
-	$(CC) $(CFLAGS) $^ -o $@
+	$(CC) $(CFLAGS) $^ -o $@ -lm
 
 $(SRC_DIR)/%.o: $(SRC_DIR)/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
