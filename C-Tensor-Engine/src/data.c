@@ -13,7 +13,7 @@ static uint32_t swap_endian(uint32_t val) {
 Tensor* load_mnist_images(const char* filename) {
     FILE *file = fopen(filename, "rb");
     if (!file) {
-        printf("Could not open file: %s\n", filename);
+        perror("Error: Could not open mnist image file");
         return NULL;
     }
 
@@ -22,7 +22,7 @@ Tensor* load_mnist_images(const char* filename) {
         fread(&num_images, sizeof(uint32_t), 1, file) != 1 ||
         fread(&num_rows, sizeof(uint32_t), 1, file) != 1 ||
         fread(&num_cols, sizeof(uint32_t), 1, file) != 1) {
-        printf("Error: Failed to read header from %s\n", filename);
+        perror("Error: Failed to read header from mnist image file");
         fclose(file);
         return NULL;
     }
@@ -33,7 +33,7 @@ Tensor* load_mnist_images(const char* filename) {
     num_cols = swap_endian(num_cols);
 
     if (magic != 2051) {
-        printf("Invalid magic number in MNIST image file: %u\n", magic);
+        perror("Error: Invalid magic number in MNIST image file");
         fclose(file);
         return NULL;
     }
@@ -47,14 +47,14 @@ Tensor* load_mnist_images(const char* filename) {
 
     uint8_t *buffer = (uint8_t *)malloc(num_images * num_rows * num_cols);
     if (!buffer) {
-        printf("Error: Failed to allocate temporary buffer!\n");
+        perror("Error: Failed to allocate temporary buffer");
         free_tensor(tensor);
         fclose(file);
         return NULL;
     }
 
     if (fread(buffer, sizeof(uint8_t), num_images * num_rows * num_cols, file) != num_images * num_rows * num_cols) {
-        printf("Error: Incomplete image data in file!\n");
+        perror("Error: Incomplete image data in file");
         free(buffer);
         free_tensor(tensor);
         fclose(file);
@@ -73,14 +73,14 @@ Tensor* load_mnist_images(const char* filename) {
 Tensor* load_mnist_labels(const char* filename) {
     FILE *file = fopen(filename, "rb");
     if (!file) {
-        printf("Could not open file: %s\n", filename);
+        perror("Error: Could not open mnist label file");
         return NULL;
     }
 
     uint32_t magic, num_labels;
     if (fread(&magic, sizeof(uint32_t), 1, file) != 1 ||
         fread(&num_labels, sizeof(uint32_t), 1, file) != 1) {
-        printf("Error: Failed to read header from labels!\n");
+        perror("Error: Failed to read header from mnist label file");
         fclose(file);
         return NULL;
     }
@@ -89,7 +89,7 @@ Tensor* load_mnist_labels(const char* filename) {
     num_labels = swap_endian(num_labels);
 
     if (magic != 2049) {
-        printf("Invalid magic number in MNIST label file: %u\n", magic);
+        perror("Error: Invalid magic number in MNIST label file");
         fclose(file);
         return NULL;
     }
@@ -107,14 +107,14 @@ Tensor* load_mnist_labels(const char* filename) {
 
     uint8_t *buffer = (uint8_t *)malloc(num_labels);
     if (!buffer) {
-        printf("Error: Failed to allocate label buffer!\n");
+        perror("Error: Failed to allocate label buffer");
         free_tensor(tensor);
         fclose(file);
         return NULL;
     }
 
     if (fread(buffer, sizeof(uint8_t), num_labels, file) != num_labels) {
-        printf("Error: Incomplete label data in file!\n");
+        perror("Error: Incomplete label data in file");
         free(buffer);
         free_tensor(tensor);
         fclose(file);

@@ -39,6 +39,68 @@ Tensor* create_tensor(int ndim, const int* shape) {
     return tensor;
 }
 
+void save_tensor(Tensor *target, const char *filename) {
+    if(!target || !filename) return;
+
+    FILE *file = fopen(filename, "wb");
+    if(!file) {
+        perror("Failed to open file for writing");
+        return;
+    }
+
+    fwrite(&(target->ndim), sizeof(int), 1, file);
+    fwrite(target->shape, sizeof(int), target->ndim, file);
+    fwrite(target->data, sizeof(float), target->size, file);
+
+    fclose(file);
+    printf("Saved tensor to %s successfully.\n", filename);
+}
+
+Tensor* load_tensor(const char *filename) {
+    if(!filename) return NULL;
+
+    FILE *file = fopen(filename, "rb");
+    if(!file) {
+        perror("Failed to open file for reading");
+        return NULL;
+    }
+
+    int ndim;
+    if (fread(&ndim, sizeof(int), 1, file) != 1) {
+        fclose(file);
+        return NULL;
+    }
+
+    int *shape = (int *)malloc(sizeof(int) * ndim);
+    if(!shape) {
+        fclose(file);
+        return NULL;
+    }
+    if (fread(shape, sizeof(int), ndim, file) != ndim) {
+        free(shape);
+        fclose(file);
+        return NULL;
+    }
+
+    Tensor *tensor = create_tensor(ndim, shape);
+    free(shape);
+
+    if(!tensor) {
+        fclose(file);
+        return NULL;
+    }
+    
+    if (fread(tensor->data, sizeof(float), tensor->size, file) != tensor->size) {
+        free_tensor(tensor);
+        fclose(file);
+        return NULL;
+    }
+
+    fclose(file);
+    printf("Loaded tensor from %s successfully.\n", filename);
+    return tensor;
+}
+
 void free_tensor(Tensor *t) {
     if(t) {
         if(t->grad) {

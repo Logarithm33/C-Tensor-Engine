@@ -28,6 +28,10 @@ struct Tensor{
 
 Tensor* create_tensor(int ndim, const int* shape);
 
+void save_tensor(Tensor *target, const char *filename);
+
+Tensor* load_tensor(const char *filename);
+
 void free_tensor(Tensor* t);
 
 #endif
